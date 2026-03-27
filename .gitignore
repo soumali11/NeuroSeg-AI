@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+venv/
+__pycache__/
+temp_uploads/
+neuroseg-backend/venv/
+neuroseg-backend/temp_uploads/
+neuroseg-backend/__pycache__/
+neuroseg.db
