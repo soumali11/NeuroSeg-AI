@@ -28,12 +28,10 @@ const Navbar = () => {
     if (location.pathname !== "/") {
       navigate("/");
       setTimeout(() => {
-        const el = document.getElementById(id);
-        el?.scrollIntoView({ behavior: "smooth" });
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } else {
-      const el = document.getElementById(id);
-      el?.scrollIntoView({ behavior: "smooth" });
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -105,8 +103,8 @@ const Navbar = () => {
 
           {/* Get Started button */}
           <button
-            onClick={() => navigate("/dashboard")}
-            className="rounded-full bg-primary px-6 py-2.5 text-base font-semibold text-primary-foreground transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_hsl(180_100%_50%/0.5)] active:scale-95"
+            onClick={() => navigate("/upload")}
+            className="rounded-full bg-primary px-6 py-2.5 text-base font-semibold text-primary-foreground transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_hsl(var(--primary)/0.5)] active:scale-95"
           >
             Get Started
           </button>

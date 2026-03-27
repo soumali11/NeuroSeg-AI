@@ -3,7 +3,7 @@ import Lenis from "lenis";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import BentoGrid from "@/components/BentoGrid";
-import ScanningTheater from "@/components/ScanningTheater";
+import MockDemo from "@/components/MockDemo";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -27,7 +27,7 @@ const Index = () => {
       <Navbar />
       <HeroSection />
       <BentoGrid />
-      <ScanningTheater />
+      <MockDemo />
       <Footer />
     </div>
   );
