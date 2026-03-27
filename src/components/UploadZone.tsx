@@ -1,10 +1,15 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, FileImage } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
-const UploadZone = () => {
+interface UploadZoneProps {
+  onStartAnalysis?: (file: File) => void;
+}
+
+const UploadZone = ({ onStartAnalysis }: UploadZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = useCallback((e: React.DragEvent, entering: boolean) => {
     e.preventDefault();
@@ -17,6 +22,23 @@ const UploadZone = () => {
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) setFile(droppedFile);
   }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (selected) setFile(selected);
+  };
+
+  const handleZoneClick = () => {
+    if (!file) {
+      inputRef.current?.click();
+    }
+  };
+
+  const handleStartAnalysis = () => {
+    if (file && onStartAnalysis) {
+      onStartAnalysis(file);
+    }
+  };
 
   return (
     <section id="upload" className="relative py-32">
@@ -43,7 +65,17 @@ const UploadZone = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
+          {/* Hidden file input */}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".nii,.nii.gz,.dcm,.png,.jpg,.jpeg"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
           <div
+            onClick={handleZoneClick}
             onDragEnter={(e) => handleDrag(e, true)}
             onDragOver={(e) => handleDrag(e, true)}
             onDragLeave={(e) => handleDrag(e, false)}
@@ -60,6 +92,7 @@ const UploadZone = () => {
                   key="file"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
                   className="flex flex-col items-center gap-4 text-center"
                 >
                   <FileImage className="h-12 w-12 text-primary" />
@@ -69,18 +102,34 @@ const UploadZone = () => {
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
-                  <button
-                    onClick={() => setFile(null)}
-                    className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_20px_hsl(180_100%_50%/0.4)]"
-                  >
-                    Start Analysis
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartAnalysis();
+                      }}
+                      className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_20px_hsl(var(--ring)/0.4)] hover:scale-105 active:scale-95"
+                    >
+                      Start Analysis
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                        if (inputRef.current) inputRef.current.value = "";
+                      }}
+                      className="rounded-full border border-border px-6 py-2 text-sm font-semibold text-muted-foreground transition-all duration-300 hover:border-primary/50 hover:text-primary"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </motion.div>
               ) : (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                   className="flex flex-col items-center gap-4 text-center"
                 >
                   <div className="rounded-full bg-primary/10 p-4">
@@ -91,6 +140,9 @@ const UploadZone = () => {
                       Drop your MRI scan here
                     </p>
                     <p className="text-sm text-muted-foreground">
+                      or <span className="text-primary underline">click to browse</span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground/70">
                       NIfTI, DICOM, or PNG formats · Max 500MB
                     </p>
                   </div>
