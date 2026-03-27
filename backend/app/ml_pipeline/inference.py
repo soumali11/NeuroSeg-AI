@@ -96,13 +96,34 @@ def get_transforms():
     ])
 
 # ── Surgical Urgency Triage Logic ─────────────────────────────────────────────
-def calculate_urgency(whole_vol: float, enhancing_vol: float) -> str:
-    if enhancing_vol > 10.0:
-        return "CRITICAL EMERGENCY"
-    elif enhancing_vol > 5.0 or whole_vol > 50.0:
-        return "PRIORITY"
+def calculate_urgency(whole_vol: float, enhancing_vol: float) -> dict:
+    """
+    Returns a numeric score (0-100) and a text label.
+
+    Score formula:
+      - Enhancing tumor contributes 70% of the score (clinically most significant)
+      - Whole tumor contributes 30% of the score
+      - Enhancing saturates at 10 cm3 (beyond that is always critical)
+      - Whole tumor saturates at 60 cm3
+
+    Labels:
+      score >= 60  -> CRITICAL EMERGENCY
+      score >= 30  -> PRIORITY
+      score <  30  -> ROUTINE
+    """
+    et_component  = min(enhancing_vol / 10.0, 1.0) * 70   # 0-70 pts
+    wt_component  = min(whole_vol    / 60.0, 1.0) * 30   # 0-30 pts
+    raw_score     = et_component + wt_component
+    numeric_score = min(100, max(0, round(raw_score)))
+
+    if numeric_score >= 60:
+        label = "CRITICAL EMERGENCY"
+    elif numeric_score >= 30:
+        label = "PRIORITY"
     else:
-        return "ROUTINE"
+        label = "ROUTINE"
+
+    return {"score": numeric_score, "label": label}
 
 # ── Main inference function ───────────────────────────────────────────────────
 def run_inference(input_path: str) -> dict:
@@ -177,22 +198,35 @@ def run_inference(input_path: str) -> dict:
         )
 
     # ── Parse segmentation mask ───────────────────────────────────────────────
-    pred_mask = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()
+    # The MONAI BraTS model is multi-label (sigmoid), NOT multi-class (softmax).
+    # Output shape: (1, 3, H, W, D) — 3 independent binary channels:
+    #   channel 0 = Tumor Core (TC)
+    #   channel 1 = Whole Tumor (WT)
+    #   channel 2 = Enhancing Tumor (ET)
+    # Using argmax is WRONG — it produces massive false-positive volumes.
+    # Apply sigmoid, threshold at 0.5, treat each channel independently.
+    probs = torch.sigmoid(output).squeeze(0).cpu().numpy()  # shape: (3, H, W, D)
+
+    tc_mask = probs[0] > 0.5   # Tumor Core
+    wt_mask = probs[1] > 0.5   # Whole Tumor
+    et_mask = probs[2] > 0.5   # Enhancing Tumor
 
     # ── Volume calculation ────────────────────────────────────────────────────
+    # Voxels resampled to 1mm3 -> 1 voxel = 0.001 cm3
     voxel_size_cm3 = 0.001
 
-    whole_vol     = round(float(np.sum(pred_mask > 0))  * voxel_size_cm3, 2)
-    core_vol      = round(float(np.sum(pred_mask == 1)) * voxel_size_cm3, 2)
-    enhancing_vol = round(float(np.sum(pred_mask == 3)) * voxel_size_cm3, 2)
+    whole_vol     = round(float(np.sum(wt_mask)) * voxel_size_cm3, 2)
+    core_vol      = round(float(np.sum(tc_mask)) * voxel_size_cm3, 2)
+    enhancing_vol = round(float(np.sum(et_mask)) * voxel_size_cm3, 2)
 
     urgency = calculate_urgency(whole_vol, enhancing_vol)
 
-    print(f"[NeuroSegAI] Whole: {whole_vol} cm³ | Core: {core_vol} cm³ | Enhancing: {enhancing_vol} cm³ | → {urgency}")
+    print(f"[NeuroSegAI] Whole: {whole_vol} cm³ | Core: {core_vol} cm³ | Enhancing: {enhancing_vol} cm³ | Score: {urgency["score"]} → {urgency["label"]}")
 
     return {
         "whole_tumor_volume"    : whole_vol,
         "tumor_core_volume"     : core_vol,
         "enhancing_tumor_volume": enhancing_vol,
-        "urgency_score"         : urgency,
+        "urgency_score"         : urgency["label"],
+        "urgency_numeric"       : urgency["score"],
     }

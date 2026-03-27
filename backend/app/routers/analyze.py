@@ -45,11 +45,12 @@ async def analyze_scan(
         # Save the result to the database
         scan = models.ScanResult(
             patient_name           = patient_name,
-            filename               = "4 Modalities (.nii)", # Updated to reflect multiple files
+            filename               = "4 Modalities (.nii)",
             whole_tumor_volume     = result["whole_tumor_volume"],
             tumor_core_volume      = result["tumor_core_volume"],
             enhancing_tumor_volume = result["enhancing_tumor_volume"],
             urgency_score          = result["urgency_score"],
+            urgency_numeric        = result["urgency_numeric"],
         )
         db.add(scan)
         db.commit()

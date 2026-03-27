@@ -11,5 +11,6 @@ class ScanResult(Base):
     whole_tumor_volume     = Column(Float)
     tumor_core_volume      = Column(Float)
     enhancing_tumor_volume = Column(Float)
-    urgency_score          = Column(String)
+    urgency_score          = Column(String)   # Text label: ROUTINE / PRIORITY / CRITICAL EMERGENCY
+    urgency_numeric        = Column(Integer)  # 0–100 computed score, unique per patient
     created_at             = Column(DateTime(timezone=True), server_default=func.now())
