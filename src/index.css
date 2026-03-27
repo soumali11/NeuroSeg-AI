@@ -54,6 +54,41 @@
     --font-display: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
+
+  .light {
+    --background: 0 0% 97%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 220 90% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 220 70% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 220 90% 50%;
+
+    --glow-primary: 0 0 20px hsl(220 90% 50% / 0.2), 0 0 60px hsl(220 90% 50% / 0.08);
+    --glow-strong: 0 0 30px hsl(220 90% 50% / 0.3), 0 0 80px hsl(220 90% 50% / 0.12);
+    --gradient-primary: linear-gradient(135deg, hsl(220 90% 50%), hsl(240 80% 60%));
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 97%), hsl(0 0% 93%));
+  }
 }
 
 @layer base {
