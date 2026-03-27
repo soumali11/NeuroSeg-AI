@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+python-multipart
+numpy
+scipy
+nibabel
+monai[all]
+torch
+torchvision
+torchaudio

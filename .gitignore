@@ -29,3 +29,10 @@ neuroseg-backend/venv/
 neuroseg-backend/temp_uploads/
 neuroseg-backend/__pycache__/
 neuroseg.db
+# --- NeuroSeg AI & Data Files ---
+.env
+*.nii
+*.nii.gz
+*.pth
+*.pt
+backend/app/ml_pipeline/weights/
