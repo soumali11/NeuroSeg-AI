@@ -70,7 +70,7 @@ const Upload = () => {
       // Passing the ARRAY of files to your API
       await api.analyzeScan(selectedPatient, selectedFiles);
       toast.success("Analysis complete!");
-      navigate('/results'); 
+      navigate(`/results?name=${encodeURIComponent(selectedPatient)}`); 
     } catch (error) {
       console.error("Analysis failed:", error);
       toast.error("The AI encountered an error. Check the backend terminal.");

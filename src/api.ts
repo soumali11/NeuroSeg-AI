@@ -18,12 +18,17 @@ export const api = {
         }
     },
 
-    // 2. NEW: Fetch SPECIFIC results for one patient (The Fix)
+    // 2. Fetch the most recent result for one specific patient
     getPatientResults: async (patientName: string): Promise<any> => {
         try {
-            // This tells the backend: "Give me the data ONLY for this name"
-            const response = await apiClient.get(`/results/${patientName}`);
-            return response.data;
+            // Uses ?patient_name= query param — matches the updated backend route
+            const response = await apiClient.get('/results', {
+                params: { patient_name: patientName }
+            });
+            // Backend returns array sorted newest-first — take the top result
+            const results = response.data;
+            if (!results || results.length === 0) return null;
+            return results[0];
         } catch (error) {
             console.error("Error fetching specific results:", error);
             throw error;

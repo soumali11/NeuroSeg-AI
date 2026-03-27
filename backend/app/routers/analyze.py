@@ -67,15 +67,16 @@ async def analyze_scan(
             shutil.rmtree(patient_temp_dir)
 
 
-# ── GET: All results ──────────────────────────────────────────────────────────
+# ── GET: All results (optionally filtered by patient_name) ────────────────────
 @router.get("/results")
-def get_all_results(db: Session = Depends(get_db)):
-    return db.query(models.ScanResult)\
-             .order_by(models.ScanResult.created_at.desc())\
-             .all()
+def get_all_results(patient_name: str = None, db: Session = Depends(get_db)):
+    query = db.query(models.ScanResult)
+    if patient_name:
+        query = query.filter(models.ScanResult.patient_name == patient_name)
+    return query.order_by(models.ScanResult.created_at.desc()).all()
 
 
-# ── GET: Single result ────────────────────────────────────────────────────────
+# ── GET: Single result by numeric ID ─────────────────────────────────────────
 @router.get("/results/{scan_id}")
 def get_result(scan_id: int, db: Session = Depends(get_db)):
     scan = db.query(models.ScanResult)\
@@ -102,15 +103,16 @@ def delete_result(scan_id: int, db: Session = Depends(get_db)):
 # ── GET: Patient Dropdown List ────────────────────────────────────────────────
 @router.get("/patients")
 async def get_patients():
-    # Hardcoding the exact double-folder path right here
-    data_dir = r"C:\Users\Shour\Desktop\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData"
-    
+    # Read from environment variable — set BRATS_DATA_DIR in your .env file
+    data_dir = os.getenv("BRATS_DATA_DIR", "")
+
+    if not data_dir:
+        return {"error": "BRATS_DATA_DIR environment variable is not set. Add it to your .env file."}
+
     try:
-        # Failsafe: check if the path is actually valid
         if not os.path.exists(data_dir):
-            return {"error": f"Could not find this path: {data_dir}"}
-            
-        # Grab all the patient folders inside
+            return {"error": f"Could not find path: {data_dir}. Check your BRATS_DATA_DIR value."}
+
         patients = [f for f in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, f))]
         return {"patients": patients}
     except Exception as e:

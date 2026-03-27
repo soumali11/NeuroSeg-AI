@@ -191,19 +191,19 @@ const Results = () => {
                     ))}
                     <div className="relative z-10 flex h-32 w-32 flex-col items-center justify-center rounded-full border-2 border-primary/50 bg-primary/10 glow-border">
                       <span className="text-4xl font-bold text-primary">
-                        {patientData?.urgencyScore || "87"}
+                        {patientData ? patientData.urgency_score : "—"}
                       </span>
                       <span className="text-xs font-medium uppercase tracking-widest text-primary/70">
-                        {patientData?.status || "HIGH"}
+                        {patientData ? "urgency" : "loading"}
                       </span>
                     </div>
                   </motion.div>
 
                   <div className="grid w-full max-w-md grid-cols-3 gap-4">
                     {[
-                      { label: "Tumor Volume", value: patientData?.volume || "12.4 cm³" },
-                      { label: "Growth Rate", value: patientData?.growth || "+2.1%/mo" },
-                      { label: "Confidence", value: patientData?.confidence || "94.3%" },
+                      { label: "Tumor Volume", value: patientData ? `${patientData.whole_tumor_volume} cm³` : "—" },
+                      { label: "Core Volume",  value: patientData ? `${patientData.tumor_core_volume} cm³` : "—" },
+                      { label: "Enhancing",    value: patientData ? `${patientData.enhancing_tumor_volume} cm³` : "—" },
                     ].map((m) => (
                       <div key={m.label} className="bento-cell text-center p-2">
                         <p className="text-sm font-bold text-foreground">{m.value}</p>
