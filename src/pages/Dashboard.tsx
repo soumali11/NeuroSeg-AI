@@ -11,6 +11,9 @@ type DashboardState = "upload" | "scanning" | "results";
 const Dashboard = () => {
   const [state, setState] = useState<DashboardState>("upload");
   const [currentFile, setCurrentFile] = useState<File | null>(null);
+  
+  // Initialize with a fallback
+  const [patientName, setPatientName] = useState<string>("Guest Patient");
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -27,10 +30,20 @@ const Dashboard = () => {
     return () => lenis.destroy();
   }, []);
 
-  const handleStartAnalysis = useCallback((file: File) => {
+  // This function is triggered by the UploadZone
+  const handleStartAnalysis = useCallback((file: File, nameFromInput?: string) => {
     setCurrentFile(file);
+    
+    // Logic: Use the name from the text input if it exists, 
+    // otherwise strip the extension from the file name (e.g., "MRI_Scan_01.jpg" -> "MRI_Scan_01")
+    const finalName = nameFromInput && nameFromInput.trim() !== "" 
+      ? nameFromInput 
+      : file.name.replace(/\.[^/.]+$/, ""); 
+
+    setPatientName(finalName);
     setState("scanning");
-    // Scroll to scanning theater
+    
+    // Auto-scroll to theater
     setTimeout(() => {
       document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -38,15 +51,17 @@ const Dashboard = () => {
 
   const handleScanComplete = useCallback(() => {
     setState("results");
-    // Scroll to results
+    // Scroll to the results component
     setTimeout(() => {
-      document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
+      const el = document.getElementById("results-section");
+      el?.scrollIntoView({ behavior: "smooth" });
     }, 300);
   }, []);
 
   const handleRescan = useCallback(() => {
     setState("upload");
     setCurrentFile(null);
+    setPatientName("Guest Patient");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -54,21 +69,27 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-24">
+        
+        {/* Step 1: Upload */}
         {state === "upload" && (
           <UploadZone onStartAnalysis={handleStartAnalysis} />
         )}
 
+        {/* Step 2: Scanning (Shared with results to keep theater visible) */}
         {(state === "scanning" || state === "results") && (
           <ScanningTheater
             isScanning={state === "scanning"}
             fileName={currentFile?.name}
+            patientName={patientName} 
             onScanComplete={handleScanComplete}
           />
         )}
 
-        <div id="results">
+        {/* Step 3: Result Analysis */}
+        <div id="results-section">
           <UrgencyScore
             visible={state === "results"}
+            patientName={patientName} 
             onRescan={handleRescan}
           />
         </div>

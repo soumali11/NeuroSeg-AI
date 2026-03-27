@@ -53,16 +53,13 @@ const TypewriterLog = ({
 };
 
 interface ScanningTheaterProps {
-  isScanning?: boolean;
+  isScanning: boolean;
   fileName?: string;
-  onScanComplete?: () => void;
+  onScanComplete: () => void;
+  patientName?: string; // <--- ADD THIS LINE
 }
 
-const ScanningTheater = ({
-  isScanning = false,
-  fileName,
-  onScanComplete,
-}: ScanningTheaterProps) => {
+const ScanningTheater = ({ isScanning, fileName, onScanComplete, patientName }: ScanningTheaterProps) => {
   const [scanProgress, setScanProgress] = useState(0);
   const [completedLogs, setCompletedLogs] = useState(0);
   const [showSegmentation, setShowSegmentation] = useState(false);
