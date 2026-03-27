@@ -72,12 +72,6 @@ def load_model():
 MODEL = load_model()
 
 # ── Preprocessing pipeline ────────────────────────────────────────────────────
-# BraTS 2020 standard preprocessing:
-#   1. Resample to 1mm³ isotropic voxels
-#   2. Reorient to RAS standard
-#   3. Normalise intensity per modality (mean/std of non-zero voxels)
-#   4. Crop black borders to reduce input size
-
 def get_transforms():
     return Compose([
         LoadImaged(keys=["image"]),
@@ -103,14 +97,6 @@ def get_transforms():
 
 # ── Surgical Urgency Triage Logic ─────────────────────────────────────────────
 def calculate_urgency(whole_vol: float, enhancing_vol: float) -> str:
-    """
-    Surgical urgency classification based on tumor volumes (cm³).
-    Thresholds based on clinical neuro-oncology literature.
-
-    CRITICAL EMERGENCY : Enhancing tumor > 10 cm³ → Immediate surgery
-    PRIORITY           : Enhancing > 5 cm³ or Whole > 50 cm³ → Soon
-    ROUTINE            : Below thresholds → Schedule normally
-    """
     if enhancing_vol > 10.0:
         return "CRITICAL EMERGENCY"
     elif enhancing_vol > 5.0 or whole_vol > 50.0:
@@ -119,30 +105,36 @@ def calculate_urgency(whole_vol: float, enhancing_vol: float) -> str:
         return "ROUTINE"
 
 # ── Main inference function ───────────────────────────────────────────────────
-def run_inference(file_path: str) -> dict:
-    """
-    Runs full 3D segmentation on a NIfTI MRI scan using the
-    pretrained MONAI brats_mri_segmentation model.
-
-    The model expects 4 input channels (flair, t1, t1ce, t2).
-    If a single-channel file is uploaded, it is duplicated across
-    all 4 channels as a graceful fallback.
-
-    Args:
-        file_path (str): Path to the .nii or .nii.gz file
-
-    Returns:
-        dict: {
-            whole_tumor_volume     : float (cm³),
-            tumor_core_volume      : float (cm³),
-            enhancing_tumor_volume : float (cm³),
-            urgency_score          : str
-        }
-    """
+def run_inference(input_path: str) -> dict:
     transforms = get_transforms()
 
-    # Load and preprocess the scan
-    data = transforms({"image": file_path})
+    # 1. Check if input_path is a directory containing 4 files (from web app)
+    if os.path.isdir(input_path):
+        files = os.listdir(input_path)
+        
+        # Safely identify the 4 required modalities based on their filenames
+        flair = next((f for f in files if "flair" in f.lower()), None)
+        t1ce  = next((f for f in files if "t1ce" in f.lower() or "t1c" in f.lower()), None)
+        t1    = next((f for f in files if "t1" in f.lower() and "t1ce" not in f.lower() and "t1c" not in f.lower()), None)
+        t2    = next((f for f in files if "t2" in f.lower()), None)
+
+        if not all([flair, t1ce, t1, t2]):
+            raise ValueError(f"Missing one or more modalities. Found: FLAIR={flair}, T1c={t1ce}, T1={t1}, T2={t2}")
+
+        # BraTS Model Standard Channel Order: 0:FLAIR, 1:T1ce, 2:T1, 3:T2
+        image_paths = [
+            os.path.join(input_path, flair),
+            os.path.join(input_path, t1ce),
+            os.path.join(input_path, t1),
+            os.path.join(input_path, t2)
+        ]
+        
+        # MONAI will automatically stack these 4 paths into a 4-channel tensor!
+        data = transforms({"image": image_paths})
+    else:
+        # Fallback for the single-file test script
+        data = transforms({"image": input_path})
+
     image = data["image"]
 
     # ── Ensure correct tensor type ────────────────────────────────────────────
@@ -151,21 +143,21 @@ def run_inference(file_path: str) -> dict:
     else:
         image_tensor = torch.as_tensor(image)
 
+    # Safety catch: EnsureChannelFirstd sometimes adds an extra batch dim when loading lists
+    if len(image_tensor.shape) == 5 and image_tensor.shape[0] == 1:
+        image_tensor = image_tensor.squeeze(0)
+
     # ── Handle channel count ──────────────────────────────────────────────────
-    # Model strictly needs 4 channels (one per MRI modality)
     num_channels = image_tensor.shape[0]
 
     if num_channels == 1:
-        # Single modality — duplicate to simulate 4 channels
         print("[NeuroSegAI] Warning: Single channel detected. Duplicating to 4 channels.")
         image_tensor = image_tensor.repeat(4, 1, 1, 1)
     elif num_channels < 4:
-        # Pad missing channels by repeating the first channel
         padding = image_tensor[:1].repeat(4 - num_channels, 1, 1, 1)
         image_tensor = torch.cat([image_tensor, padding], dim=0)
         print(f"[NeuroSegAI] Warning: {num_channels} channels found. Padded to 4.")
     elif num_channels > 4:
-        # Trim to first 4 channels
         image_tensor = image_tensor[:4]
         print(f"[NeuroSegAI] Warning: {num_channels} channels found. Trimmed to 4.")
 
@@ -175,12 +167,6 @@ def run_inference(file_path: str) -> dict:
     print(f"[NeuroSegAI] Input tensor shape: {image_tensor.shape}")
 
     # ── Sliding window inference ──────────────────────────────────────────────
-    # Chops the 3D brain into overlapping 128³ patches
-    # Runs model on each patch → stitches results back together
-    # overlap=0.5 gives smoother boundary predictions
-    #
-    # ⚠️  OOM Error? Reduce roi_size to (96, 96, 96) below
-
     with torch.no_grad():
         output = sliding_window_inference(
             inputs        = image_tensor,
@@ -191,20 +177,9 @@ def run_inference(file_path: str) -> dict:
         )
 
     # ── Parse segmentation mask ───────────────────────────────────────────────
-    # Output: (1, 4, H, W, D) — 4 class probability maps
-    # After argmax each voxel gets one label:
-    #   0 = Background / Normal brain
-    #   1 = Necrotic core (NCR/NET)
-    #   2 = Peritumoral edema (whole tumor region)
-    #   3 = Enhancing tumor (most aggressive, active growth)
-
     pred_mask = torch.argmax(output, dim=1).squeeze(0).cpu().numpy()
 
     # ── Volume calculation ────────────────────────────────────────────────────
-    # After resampling to 1mm³ spacing:
-    #   1 voxel = 1 mm³ = 0.001 cm³
-    # So: volume_cm3 = voxel_count × 0.001
-
     voxel_size_cm3 = 0.001
 
     whole_vol     = round(float(np.sum(pred_mask > 0))  * voxel_size_cm3, 2)

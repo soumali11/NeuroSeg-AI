@@ -20,12 +20,12 @@ app = FastAPI(
 
 # 2. PRO TIP: Restrict CORS for production-ready frontend integration
 # Instead of "*", we pull the specific URL from our .env
-frontend_origin = os.getenv("FRONTEND_URL", "http://localhost:5173")
+frontend_origin = os.getenv("FRONTEND_URL", "http://localhost:8080").split(",")  # Support multiple origins if needed
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_origin], 
-    allow_credentials=True,
+    allow_origins=["*"], 
+    allow_credentials=False,  # <--- THIS WAS THE CULPRIT! Set this to False.
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models
 from app.ml_pipeline.inference import run_inference
+from typing import List
 
 # Load environment variables
 load_dotenv()
@@ -17,27 +18,34 @@ TEMP_DIR = os.getenv("TEMP_UPLOAD_DIR", "temp_uploads")
 os.makedirs(TEMP_DIR, exist_ok=True)
 DATA_DIR = os.getenv("BRATS_DATA_DIR")
 
-# ── POST: Analyze a new scan ──────────────────────────────────────────────────
+# ── POST: Analyze a new scan (NOW ACCEPTS MULTIPLE FILES) ─────────────────────
 @router.post("/analyze")
 async def analyze_scan(
     patient_name: str = Form(...),
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...), # <--- Changed to List[UploadFile]
     db: Session = Depends(get_db)
 ):
-    if not (file.filename.endswith(".nii") or file.filename.endswith(".nii.gz")):
-        raise HTTPException(status_code=400, detail="Only .nii or .nii.gz files accepted")
-
-    file_path = os.path.join(TEMP_DIR, file.filename)
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Create a unique temporary folder for this specific patient's 4 scans
+    patient_temp_dir = os.path.join(TEMP_DIR, patient_name)
+    os.makedirs(patient_temp_dir, exist_ok=True)
 
     try:
-        result = run_inference(file_path)
+        # Loop through and save all 4 modalities into the temp folder
+        for f in files:
+            if not (f.filename.endswith(".nii") or f.filename.endswith(".nii.gz")):
+                raise HTTPException(status_code=400, detail=f"Invalid file: {f.filename}. Only .nii or .nii.gz accepted")
+            
+            file_path = os.path.join(patient_temp_dir, f.filename)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(f.file, buffer)
 
+        # Pass the entire FOLDER path to the AI inference pipeline
+        result = run_inference(patient_temp_dir)
+
+        # Save the result to the database
         scan = models.ScanResult(
             patient_name           = patient_name,
-            filename               = file.filename,
+            filename               = "4 Modalities (.nii)", # Updated to reflect multiple files
             whole_tumor_volume     = result["whole_tumor_volume"],
             tumor_core_volume      = result["tumor_core_volume"],
             enhancing_tumor_volume = result["enhancing_tumor_volume"],
@@ -54,8 +62,9 @@ async def analyze_scan(
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Clean up: Delete the temporary patient folder and all files inside it
+        if os.path.exists(patient_temp_dir):
+            shutil.rmtree(patient_temp_dir)
 
 
 # ── GET: All results ──────────────────────────────────────────────────────────
@@ -90,18 +99,19 @@ def delete_result(scan_id: int, db: Session = Depends(get_db)):
     return {"message": "Deleted successfully"}
 
 
-# ── GET: Auto-Fetch Available Patients (For Frontend Dropdown) ────────────────
+# ── GET: Patient Dropdown List ────────────────────────────────────────────────
 @router.get("/patients")
-def get_available_patients():
-    """Scans the BraTS directory and returns a list of patient folders."""
-    if not DATA_DIR or not os.path.exists(DATA_DIR):
-        return {"error": "Dataset path not found. Please check your .env file."}
+async def get_patients():
+    # Hardcoding the exact double-folder path right here
+    data_dir = r"C:\Users\Shour\Desktop\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData"
     
     try:
-        patients = [
-            folder for folder in os.listdir(DATA_DIR) 
-            if os.path.isdir(os.path.join(DATA_DIR, folder)) and "BraTS" in folder
-        ]
-        return {"patients": sorted(patients)}
+        # Failsafe: check if the path is actually valid
+        if not os.path.exists(data_dir):
+            return {"error": f"Could not find this path: {data_dir}"}
+            
+        # Grab all the patient folders inside
+        patients = [f for f in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, f))]
+        return {"patients": patients}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}

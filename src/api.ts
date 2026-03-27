@@ -19,11 +19,16 @@ export const api = {
         }
     },
 
-    // 2. Send the MRI file to the AI for analysis
-    analyzeScan: async (patientName: string, file: File): Promise<any> => {
+    // 2. Send MULTIPLE MRI files to the AI for analysis
+    analyzeScan: async (patientName: string, files: File[]): Promise<any> => {
         const formData = new FormData();
         formData.append('patient_name', patientName);
-        formData.append('file', file);
+        
+        // Loop through the array and append every selected file
+        files.forEach((file) => {
+            // Note: We are appending them all under the key "files"
+            formData.append('files', file); 
+        });
 
         try {
             const response = await apiClient.post('/analyze', formData, {
