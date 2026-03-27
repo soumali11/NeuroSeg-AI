@@ -1,10 +1,12 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import heroBrain from "@/assets/hero-brain.png";
 import StaggerText from "./StaggerText";
 
 const HeroSection = () => {
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end start"],
@@ -16,6 +18,7 @@ const HeroSection = () => {
   return (
     <section
       ref={ref}
+      id="home"
       className="relative flex min-h-screen items-center justify-center overflow-hidden pt-24"
     >
       {/* Radial glow background */}
@@ -71,18 +74,21 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
           >
-            <a
-              href="#upload"
-              className="group relative overflow-hidden rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsl(180_100%_50%/0.4)]"
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="group relative overflow-hidden rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsl(180_100%_50%/0.4)] hover:scale-105 active:scale-95"
             >
-              <span className="relative z-10">Upload MRI</span>
-            </a>
-            <a
-              href="#demo"
+              <span className="relative z-10">Get Started</span>
+            </button>
+            <button
+              onClick={() => {
+                const el = document.getElementById("demo");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
               className="rounded-full border border-border px-8 py-3 font-semibold text-foreground transition-all duration-300 hover:border-primary/50 hover:text-primary"
             >
               Watch Demo
-            </a>
+            </button>
           </motion.div>
         </div>
 
