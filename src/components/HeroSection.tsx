@@ -75,7 +75,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.8 }}
           >
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/upload")}
               className="group relative overflow-hidden rounded-full bg-primary px-8 py-3 font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_30px_hsl(180_100%_50%/0.4)] hover:scale-105 active:scale-95"
             >
               <span className="relative z-10">Get Started</span>
