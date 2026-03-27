@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import Lenis from "lenis";
 import Navbar from "@/components/Navbar";
-import HeroSection from "@/components/HeroSection";
-import BentoGrid from "@/components/BentoGrid";
+import UploadZone from "@/components/UploadZone";
 import ScanningTheater from "@/components/ScanningTheater";
+import UrgencyScore from "@/components/UrgencyScore";
 import Footer from "@/components/Footer";
 
-const Index = () => {
+const Dashboard = () => {
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.4,
@@ -25,12 +25,14 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <HeroSection />
-      <BentoGrid />
-      <ScanningTheater />
+      <div className="pt-24">
+        <UploadZone />
+        <ScanningTheater />
+        <UrgencyScore />
+      </div>
       <Footer />
     </div>
   );
 };
 
-export default Index;
+export default Dashboard;

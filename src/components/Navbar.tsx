@@ -1,5 +1,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Brain } from "lucide-react";
+import { Brain, Sun, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Navbar = () => {
   const { scrollY } = useScroll();
@@ -7,22 +9,65 @@ const Navbar = () => {
   const padding = useTransform(scrollY, [0, 200], [24, 12]);
   const opacity = useTransform(scrollY, [0, 200], [0.4, 0.8]);
 
+  const [isDark, setIsDark] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    }
+  }, [isDark]);
+
+  const scrollToSection = (id: string) => {
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        el?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } else {
+      const el = document.getElementById(id);
+      el?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const scrollToTop = () => {
+    if (location.pathname !== "/") {
+      navigate("/");
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const navItems = [
+    { label: "Home", action: () => scrollToTop() },
+    { label: "Features", action: () => scrollToSection("features") },
+    { label: "Demo", action: () => scrollToSection("demo") },
+  ];
+
   return (
     <motion.nav
       className="fixed top-0 left-0 right-0 z-50 border-b border-border/30"
       style={{
         backdropFilter: useTransform(blur, (v) => `blur(${v}px)`),
-        backgroundColor: useTransform(opacity, (v) => `hsl(0 0% 4% / ${v})`),
+        backgroundColor: useTransform(opacity, (v) => `hsl(var(--background) / ${v})`),
         paddingTop: padding,
         paddingBottom: padding,
       }}
     >
       <div className="container mx-auto flex items-center justify-between px-6">
         <motion.div
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 cursor-pointer"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6 }}
+          onClick={scrollToTop}
         >
           <div className="relative">
             <Brain className="h-8 w-8 text-primary" />
@@ -39,17 +84,31 @@ const Navbar = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          {["About", "Features", "Upload", "Demo"].map((item) => (
-            <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
-              className="text-sm font-medium text-muted-foreground transition-colors duration-300 hover:text-primary"
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className="text-sm font-medium text-muted-foreground transition-colors duration-300 hover:text-primary bg-transparent border-none cursor-pointer"
             >
-              {item}
-            </a>
+              {item.label}
+            </button>
           ))}
-          <button className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-all duration-300 hover:shadow-[0_0_20px_hsl(180_100%_50%/0.4)]">
-            Try Now
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className="rounded-full p-2 text-muted-foreground transition-colors duration-300 hover:text-primary bg-transparent border-none cursor-pointer"
+            aria-label="Toggle theme"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+
+          {/* Get Started button */}
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="rounded-full bg-primary px-6 py-2.5 text-base font-semibold text-primary-foreground transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_hsl(180_100%_50%/0.5)] active:scale-95"
+          >
+            Get Started
           </button>
         </motion.div>
       </div>
